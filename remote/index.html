@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TvBox">
+<title>TvBox Controle</title>
+<style>
+  :root { --bg:#0a0a0d; --panel:#16171d; --panel2:#1f2129; --text:#f4f4f6; --muted:#9ea1ad; --accent:#e3101e; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
+  body { padding: env(safe-area-inset-top) 16px calc(84px + env(safe-area-inset-bottom)); min-height:100vh; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:16px 0 8px; }
+  .brand { font-weight:800; font-size:22px; letter-spacing:-0.03em; } .brand span { color:var(--accent); }
+  .status { font-size:13px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:#666; } .dot.on { background:#43a047; }
+  section { display:none; padding-top:8px; } section.show { display:block; }
+  h2 { font-size:15px; color:var(--muted); font-weight:600; margin:18px 0 10px; }
+  button { font:inherit; color:inherit; border:0; background:var(--panel2); border-radius:14px; cursor:pointer; }
+  button:active { transform:scale(0.96); background:#2b2e38; }
+  .pad { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; max-width:320px; margin:12px auto 0; }
+  .pad button { height:76px; font-size:26px; }
+  .pad .ok { background:var(--accent); font-weight:800; font-size:20px; }
+  .row { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; max-width:320px; margin:12px auto 0; }
+  .row button { height:52px; font-size:15px; }
+  .colors { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; max-width:320px; margin:12px auto 0; }
+  .colors button { height:36px; }
+  .field { display:flex; gap:8px; }
+  input, textarea { flex:1; font:inherit; font-size:16px; color:var(--text); background:var(--panel2); border:1px solid #2c2f3a; border-radius:12px; padding:12px 14px; outline:none; width:100%; }
+  input:focus, textarea:focus { border-color:#fff; }
+  .send { padding:0 16px; background:var(--accent); font-weight:700; }
+  .results { margin-top:12px; }
+  .item { display:flex; align-items:center; gap:12px; padding:10px; background:var(--panel); border-radius:12px; margin-bottom:8px; }
+  .item img, .item .ph { width:48px; height:68px; object-fit:cover; border-radius:6px; background:var(--panel2); flex-shrink:0; }
+  .item .live { width:68px; height:48px; object-fit:contain; }
+  .item .info { flex:1; min-width:0; }
+  .item .name { font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .sub { font-size:13px; color:var(--muted); margin-top:2px; }
+  .item button { padding:10px 12px; font-size:14px; font-weight:700; background:var(--accent); }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chips button { padding:12px 14px; font-size:15px; }
+  .muted { color:var(--muted); font-size:14px; }
+  .toast { position:fixed; left:50%; bottom:calc(96px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:#2b2e38; padding:10px 16px; border-radius:20px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  nav { position:fixed; left:0; right:0; bottom:0; display:grid; grid-template-columns:repeat(3,1fr); background:#111217; border-top:1px solid #23252e; padding-bottom:env(safe-area-inset-bottom); }
+  nav button { background:none; border-radius:0; padding:12px 0 14px; font-size:12px; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:4px; }
+  nav button b { font-size:22px; font-weight:400; }
+  nav button.on { color:var(--text); }
+  .err { padding:40px 0; text-align:center; color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Tv<span>Box</span></div>
+  <div class="status"><i class="dot" id="dot"></i><span id="status">Procurando a TV…</span></div>
+</header>
+
+<div id="nopair" class="err" style="display:none">
+  Abra este link pelo QR Code em<br><b>TvBox → Controle dos pais → Celular</b>.
+</div>
+
+<section id="tab-control" class="show">
+  <div class="pad">
+    <span></span><button data-key="up">▲</button><span></span>
+    <button data-key="left">◀</button><button data-key="ok" class="ok">OK</button><button data-key="right">▶</button>
+    <span></span><button data-key="down">▼</button><span></span>
+  </div>
+  <div class="row">
+    <button data-key="back">⟵ Voltar</button><button data-key="playPause">⏯</button>
+    <button data-key="chUp">CH +</button><button data-key="chDown">CH −</button>
+  </div>
+  <div class="colors">
+    <button data-key="red" style="background:#e53935"></button><button data-key="green" style="background:#43a047"></button>
+    <button data-key="yellow" style="background:#fdd835"></button><button data-key="blue" style="background:#1e88e5"></button>
+  </div>
+  <h2>Digitar na TV</h2>
+  <div class="field">
+    <input id="typeText" placeholder="Texto para o campo aberto na TV" autocomplete="off" autocapitalize="none">
+    <button class="send" id="typeSend">Enviar</button>
+  </div>
+  <p class="muted">Preenche o campo que estiver na tela da TV (busca, login, @canal do YouTube).</p>
+</section>
+
+<section id="tab-search">
+  <form class="field" id="searchForm">
+    <input id="q" type="search" placeholder="Série, filme, canal ou youtuber" autocomplete="off">
+    <button class="send">Buscar</button>
+  </form>
+  <div class="results" id="results"><p class="muted">Os resultados respeitam o perfil aberto na TV.</p></div>
+</section>
+
+<section id="tab-notify">
+  <h2>Mensagem</h2>
+  <div class="field">
+    <input id="msg" placeholder="Ex.: Jantar pronto!" maxlength="200">
+    <button class="send" id="msgSend">Enviar</button>
+  </div>
+  <h2>Rápidos</h2>
+  <div class="chips" id="quick"></div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<nav>
+  <button data-tab="control" class="on"><b>🎮</b>Controle</button>
+  <button data-tab="search"><b>🔍</b>Buscar</button>
+  <button data-tab="notify"><b>📣</b>Avisos</button>
+</nav>
+
+<script>
+  var NTFY = 'https://ntfy.sh';
+  var topic = (location.hash.match(/t=([a-z0-9-]+)/) || [])[1] || localStorage.getItem('tvbox.topic');
+  if (topic) localStorage.setItem('tvbox.topic', topic);
+  var $ = function (id) { return document.getElementById(id); };
+
+  function toast(t) { var el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(function () { el.classList.remove('show'); }, 1800); }
+  function send(cmd) {
+    if (!topic) return;
+    return fetch(NTFY + '/' + topic + '-tv', { method: 'POST', body: JSON.stringify(cmd) }).catch(function () { toast('Sem conexão'); });
+  }
+  function vibrate() { if (navigator.vibrate) navigator.vibrate(15); }
+
+  if (!topic) {
+    $('nopair').style.display = 'block';
+    document.querySelectorAll('section, nav').forEach(function (e) { e.style.display = 'none'; });
+  }
+
+  // abas
+  document.querySelectorAll('nav button').forEach(function (b) {
+    b.onclick = function () {
+      document.querySelectorAll('nav button').forEach(function (x) { x.classList.toggle('on', x === b); });
+      document.querySelectorAll('section').forEach(function (s) { s.classList.toggle('show', s.id === 'tab-' + b.dataset.tab); });
+    };
+  });
+
+  // controle
+  document.querySelectorAll('[data-key]').forEach(function (b) {
+    b.onclick = function () { vibrate(); send({ type: 'key', key: b.dataset.key }); };
+  });
+  $('typeSend').onclick = function () {
+    var t = $('typeText').value; if (!t) return;
+    send({ type: 'type', text: t, submit: true }); $('typeText').value = ''; toast('Enviado para a TV');
+  };
+
+  // busca
+  var currentSearch = null;
+  $('searchForm').onsubmit = function (e) {
+    e.preventDefault(); var q = $('q').value.trim(); if (q.length < 2) return;
+    currentSearch = String(Date.now());
+    $('results').innerHTML = '<p class="muted">Procurando na TV…</p>';
+    $('q').blur();
+    send({ type: 'search', q: q, id: currentSearch });
+  };
+  function esc(s) { return String(s || '').replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function addResults(items, first, done) {
+    var box = $('results');
+    if (first) box.innerHTML = '';
+    items.forEach(function (it) {
+      var d = document.createElement('div'); d.className = 'item';
+      var img = it.img ? '<img class="' + (it.kind === 'live' ? 'live' : '') + '" src="' + esc(it.img) + '" onerror="this.style.visibility=\'hidden\'">' : '<div class="ph"></div>';
+      d.innerHTML = img + '<div class="info"><div class="name">' + esc(it.name) + '</div><div class="sub">' + esc(it.sub) + '</div></div><button>Abrir na TV</button>';
+      d.querySelector('button').onclick = function () { vibrate(); send({ type: 'open', key: it.key }); toast('Abrindo na TV…'); };
+      box.appendChild(d);
+    });
+    if (done && !box.children.length) box.innerHTML = '<p class="muted">Nada encontrado.</p>';
+  }
+
+  // avisos
+  var QUICK = ['🍽️ Jantar pronto!', '🛁 Hora do banho!', '😴 Hora de dormir!', '📚 Hora da lição de casa!', '🚪 Tem alguém na porta', '🚗 Já estou chegando'];
+  QUICK.forEach(function (q) {
+    var b = document.createElement('button'); b.textContent = q;
+    b.onclick = function () { vibrate(); send({ type: 'notify', text: q, from: 'Aviso' }); toast('Aviso enviado'); };
+    $('quick').appendChild(b);
+  });
+  $('msgSend').onclick = function () {
+    var t = $('msg').value.trim(); if (!t) return;
+    send({ type: 'notify', text: t, from: 'Aviso' }); $('msg').value = ''; toast('Aviso enviado');
+  };
+
+  // respostas da TV
+  var firstChunk = true;
+  if (topic) {
+    var es = new EventSource(NTFY + '/' + topic + '-phone/sse');
+    es.onmessage = function (e) {
+      var m; try { m = JSON.parse(JSON.parse(e.data).message); } catch (x) { return; }
+      if (m.type === 'pong') {
+        $('dot').classList.add('on');
+        $('status').textContent = m.profile ? 'TV conectada · ' + m.profile : 'TV conectada · escolhendo perfil';
+        clearTimeout(window.offTimer);
+        window.offTimer = setTimeout(function () { $('dot').classList.remove('on'); $('status').textContent = 'TvBox fechado na TV?'; }, 40000);
+      } else if (m.type === 'results' && m.id === currentSearch) {
+        addResults(m.items || [], firstChunk, m.done); firstChunk = !!m.done;
+      } else if (m.type === 'error') {
+        toast(m.text);
+      }
+    };
+    var ping = function () { send({ type: 'ping' }); };
+    es.onopen = ping;
+    setInterval(ping, 30000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) ping(); });
+  }
+</script>
+</body>
+</html>
