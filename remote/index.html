@@ -150,6 +150,7 @@
   $('searchForm').onsubmit = function (e) {
     e.preventDefault(); var q = $('q').value.trim(); if (q.length < 2) return;
     currentSearch = String(Date.now());
+    firstChunk = true;
     $('results').innerHTML = '<p class="muted">Procurando na TV…</p>';
     $('q').blur();
     send({ type: 'search', q: q, id: currentSearch });
