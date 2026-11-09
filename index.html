@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>TvBox Player</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<!--
+  Ponte do player do YouTube para o TvBox (app de TV LG).
+  O YouTube exige que o player rode numa página com endereço de origem;
+  o TvBox abre esta página num iframe e controla por postMessage.
+  Não guarda nem recebe nenhum dado além do código do vídeo.
+-->
+<div id="player"></div>
+<script>
+  var params = new URLSearchParams(location.search);
+  var videoId = params.get('v') || '';
+  var start = Math.floor(Number(params.get('t')) || 0);
+  var player = null;
+
+  function send(msg) {
+    msg.source = 'tvbox-player';
+    try { parent.postMessage(msg, '*'); } catch (e) {}
+  }
+
+  window.onYouTubeIframeAPIReady = function () {
+    player = new YT.Player('player', {
+      videoId: videoId,
+      playerVars: {
+        autoplay: 1, controls: 0, rel: 0, modestbranding: 1, iv_load_policy: 3,
+        playsinline: 1, fs: 0, disablekb: 1, start: start, origin: location.origin
+      },
+      events: {
+        onReady: function () { player.playVideo(); send({ type: 'ready' }); },
+        onStateChange: function (e) { send({ type: 'state', state: e.data }); },
+        onError: function (e) { send({ type: 'error', code: e.data }); }
+      }
+    });
+  };
+
+  setInterval(function () {
+    if (player && player.getCurrentTime) {
+      send({ type: 'time', time: player.getCurrentTime() || 0, duration: player.getDuration() || 0 });
+    }
+  }, 1000);
+
+  window.addEventListener('message', function (e) {
+    var m = e.data || {};
+    if (!player || !player.playVideo) return;
+    if (m.cmd === 'play') player.playVideo();
+    else if (m.cmd === 'pause') player.pauseVideo();
+    else if (m.cmd === 'seek') player.seekTo(Math.max(0, Number(m.time) || 0), true);
+  });
+
+  var s = document.createElement('script');
+  s.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(s);
+</script>
+</body>
+</html>
