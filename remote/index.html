@@ -8,6 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TvBox">
 <title>TvBox Controle</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <style>
   :root { --bg:#0a0a0d; --panel:#16171d; --panel2:#1f2129; --text:#f4f4f6; --muted:#9ea1ad; --accent:#e3101e; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -50,6 +53,13 @@
   nav button b { font-size:22px; font-weight:400; }
   nav button.on { color:var(--text); }
   .err { padding:40px 0; text-align:center; color:var(--muted); }
+  .pair { padding:24px 0; } .pair h2 { color:var(--text); font-size:20px; margin:8px 0; }
+  .install { display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid #2c2f3a; border-radius:14px; padding:10px 12px; margin:6px 0 4px; font-size:14px; }
+  .install span { flex:1; }
+  .install .send { padding:10px 14px; }
+  .install .x { background:none; padding:6px 8px; color:var(--muted); }
+  .topic { margin-top:28px; text-align:center; font-size:12px; color:#555; }
+  .topic button { background:none; color:var(--muted); font-size:12px; text-decoration:underline; }
 </style>
 </head>
 <body>
@@ -58,8 +68,19 @@
   <div class="status"><i class="dot" id="dot"></i><span id="status">Procurando a TV…</span></div>
 </header>
 
-<div id="nopair" class="err" style="display:none">
-  Abra este link pelo QR Code em<br><b>TvBox → Controle dos pais → Celular</b>.
+<div id="install" class="install" style="display:none">
+  <span id="installText">📲 Instale o TvBox no seu celular</span>
+  <button id="installBtn" class="send">Instalar</button>
+  <button id="installClose" class="x">✕</button>
+</div>
+
+<div id="nopair" class="pair" style="display:none">
+  <h2>Conectar à TV</h2>
+  <p class="muted">Leia o QR Code em <b>TvBox → Controle dos pais → Celular</b>, ou digite o código que aparece embaixo dele:</p>
+  <form class="field" id="pairForm">
+    <input id="pairCode" placeholder="tvbox-…" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <button class="send">Conectar</button>
+  </form>
 </div>
 
 <section id="tab-control" class="show">
@@ -127,6 +148,37 @@
     $('nopair').style.display = 'block';
     document.querySelectorAll('section, nav').forEach(function (e) { e.style.display = 'none'; });
   }
+  $('pairForm').onsubmit = function (e) {
+    e.preventDefault();
+    var c = $('pairCode').value.trim().toLowerCase().replace(/.*#t=/, '');
+    if (!/^tvbox-[a-z0-9]{10,}$/.test(c)) { toast('Código inválido'); return; }
+    localStorage.setItem('tvbox.topic', c);
+    location.replace(location.pathname + '#t=' + c);
+    location.reload();
+  };
+
+  // ---- app instalável (PWA) ----
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var deferred = null;
+  function showInstall(text, withButton) {
+    if (standalone || localStorage.getItem('tvbox.installDismissed')) return;
+    $('installText').textContent = text;
+    $('installBtn').style.display = withButton ? '' : 'none';
+    $('install').style.display = 'flex';
+  }
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault(); deferred = e;
+    showInstall('📲 Instale o TvBox no seu celular', true);
+  });
+  $('installBtn').onclick = function () {
+    if (!deferred) return;
+    deferred.prompt();
+    deferred.userChoice.then(function () { $('install').style.display = 'none'; deferred = null; });
+  };
+  $('installClose').onclick = function () { $('install').style.display = 'none'; localStorage.setItem('tvbox.installDismissed', '1'); };
+  if (isIOS && !standalone) showInstall('📲 Para instalar: toque em Compartilhar ⬆️ e depois "Adicionar à Tela de Início"', false);
 
   // abas
   document.querySelectorAll('nav button').forEach(function (b) {
